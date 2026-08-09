@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#08080b"><title>itzSmoke Point · Admin</title>
+<style>
+:root{--bg:#08080b;--card:#111118;--card2:#191821;--text:#f6f3fa;--muted:#aaa4b5;--purple:#9b5dff;--border:#2b2637;--ok:#9de0b0;--danger:#ff9292}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}.wrap{max-width:1250px;margin:auto;padding:0 16px}
+header{border-bottom:1px solid var(--border);padding:20px 0}.brand{font-size:24px;font-weight:900}.brand span{color:var(--purple)}
+main{padding:22px 0 60px}.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:18px}button{cursor:pointer;font:inherit}.primary{background:var(--purple);color:#fff;border:0;border-radius:10px;padding:11px 14px;font-weight:800}.secondary{background:var(--card2);color:#fff;border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-weight:700}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:18px;margin-bottom:18px}.panel h3{margin-top:0}.settings{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.settings label{display:grid;gap:6px;color:var(--muted);font-size:13px}.settings input{width:260px}
+.table{overflow:auto;background:var(--card);border:1px solid var(--border);border-radius:15px}table{width:100%;min-width:1200px;border-collapse:collapse}th,td{padding:12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}th{font-size:12px;color:var(--muted)}input,textarea{background:#0b0b10;color:#fff;border:1px solid var(--border);border-radius:8px;padding:8px;font:inherit}.name{width:210px}.num{width:100px}.desc{width:260px;height:76px}.features{width:270px;height:110px;resize:vertical}.file{width:190px}.thumb{width:70px;height:70px;object-fit:contain;background:#08080b;border-radius:8px;display:block;margin-bottom:7px}.ok{color:var(--ok)}.bad{color:var(--danger)}.hint{color:var(--muted);font-size:12px}.delete{background:#2a1117;color:#ffb3b3;border:1px solid #57202b;border-radius:9px;padding:9px 11px}
+</style>
+</head>
+<body><header><div class="wrap"><div class="brand">itz<span>Smoke</span> Point · Admin</div></div></header>
+<main class="wrap">
+<div class="toolbar"><button class="primary" onclick="addProduct()">＋ Agregar producto</button><button class="secondary" onclick="window.open('index.html','_blank')">Abrir catálogo</button><button class="secondary" onclick="render()">Actualizar</button><button class="secondary" onclick="logout()">Cerrar sesión</button></div>
+<section class="panel"><h3>WhatsApp</h3><div class="settings"><label>Número de contacto<input id="wa" placeholder="549..." inputmode="numeric"></label><button class="primary" onclick="saveWA()">Guardar número</button><button class="secondary" onclick="removeWA()">Quitar</button></div><p class="hint">El número se usa para construir el mensaje final del carrito.</p></section>
+<p class="hint">Los productos se guardan online en Supabase. Imagen, nombre, precio, stock, límite, descripción, características y visibilidad son editables.</p>
+<div class="table"><table><thead><tr><th>Imagen</th><th>Producto</th><th>Precio</th><th>Stock</th><th>Límite</th><th>Descripción</th><th>Características</th><th>Visible</th><th>Estado</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+const SUPABASE_URL = "https://uzkusblmtvzjvulbgdav.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_91jwR0u0DBVBLT0PxpmVFQ_yhpnxbLO";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+</script><script>
+const TABLE_PRODUCTS="store_products", TABLE_SETTINGS="store_settings";
+let ps=[], currentSession=null;
+
+async function init(){
+  const {data}=await supabaseClient.auth.getSession();
+  currentSession=data.session;
+  if(!currentSession){showLogin();return}
+  await render();
+}
+function showLogin(){
+  document.querySelector("main").innerHTML=`<section class="panel" style="max-width:460px;margin:40px auto">
+  <h2>Acceso administrador</h2><p class="hint">Ingresá el correo y contraseña del único usuario administrador.</p>
+  <div style="display:grid;gap:10px"><input id="loginEmail" type="email" placeholder="Correo"><input id="loginPassword" type="password" placeholder="Contraseña"><button class="primary" onclick="login()">Entrar</button><div id="loginMsg" class="hint"></div></div></section>`;
+}
+async function login(){
+  const email=loginEmail.value.trim(),password=loginPassword.value;
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){loginMsg.textContent=error.message;return}
+  currentSession=data.session;location.reload();
+}
+async function logout(){await supabaseClient.auth.signOut();location.reload()}
+async function getProducts(){
+  const {data,error}=await supabaseClient.from(TABLE_PRODUCTS).select("*").order("created_at",{ascending:true});
+  if(error){alert(error.message);return []} return data||[];
+}
+async function render(){
+  ps=await getProducts();
+  const {data}=await supabaseClient.from(TABLE_SETTINGS).select("whatsapp").eq("id",true).maybeSingle();
+  wa.value=data?.whatsapp||"";
+  rows.innerHTML=ps.map((p,i)=>`<tr>
+<td>${p.image?`<img class="thumb" src="${p.image}" alt="">`:`<div class="thumb"></div>`}<input class="file" type="file" accept="image/*" onchange="image(${i},this)"></td>
+<td><input class="name" value="${esc(p.name)}" onchange="edit(${i},'name',this.value)"></td>
+<td><input class="num" type="number" min="0" value="${Number(p.price)||0}" onchange="edit(${i},'price',Math.max(0,+this.value))"></td>
+<td><input class="num" type="number" min="0" value="${Number(p.stock)||0}" onchange="editStock(${i},this.value)"></td>
+<td><input class="num" type="number" min="0" value="${Number(p.stock_limit)||0}" onchange="edit(${i},'stock_limit',Math.max(0,+this.value))"></td>
+<td><textarea class="desc" onchange="edit(${i},'description',this.value)">${esc(p.description||"")}</textarea></td>
+<td><textarea class="features" placeholder="Una característica por línea" onchange="features(${i},this.value)">${esc((p.features||[]).join("\n"))}</textarea></td>
+<td><input type="checkbox" ${p.active!==false?"checked":""} onchange="edit(${i},'active',this.checked)"></td>
+<td class="${p.stock>0?'ok':'bad'}">${p.stock>0?'ACTIVO':'AGOTADO'}</td>
+<td><button class="delete" onclick="del(${i})">Eliminar</button></td></tr>`).join("");
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+async function edit(i,k,v){const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({[k]:v}).eq("id",ps[i].id);if(error)alert(error.message);await render()}
+async function editStock(i,v){let n=Math.max(0,+v);if(ps[i].stock_limit>0)n=Math.min(n,ps[i].stock_limit);const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({stock:n}).eq("id",ps[i].id);if(error)alert(error.message);await render()}
+async function features(i,v){const f=v.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({features:f}).eq("id",ps[i].id);if(error)alert(error.message);await render()}
+async function image(i,e){let f=e.files[0];if(!f)return;if(!f.type.startsWith("image/"))return alert("Elegí una imagen válida.");if(f.size>5*1024*1024)return alert("Máximo 5 MB.");let r=new FileReader();r.onload=async()=>{const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({image:r.result}).eq("id",ps[i].id);if(error)alert(error.message);await render()};r.readAsDataURL(f)}
+async function addProduct(){
+  const name=prompt("Nombre del producto");if(!name)return;
+  const {error}=await supabaseClient.from(TABLE_PRODUCTS).insert({name:name.trim(),price:0,stock:0,stock_limit:0,image:"",active:true,description:"",features:[]});
+  if(error)alert(error.message);await render()
+}
+async function del(i){if(!confirm("¿Eliminar este producto?"))return;const {error}=await supabaseClient.from(TABLE_PRODUCTS).delete().eq("id",ps[i].id);if(error)alert(error.message);await render()}
+async function saveWA(){
+  const n=wa.value.replace(/\D/g,"");if(!n)return alert("Ingresá un número.");
+  const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,whatsapp:n},{onConflict:"id"});
+  if(error)alert(error.message);else alert("Número guardado.")
+}
+async function removeWA(){const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,whatsapp:""},{onConflict:"id"});if(error)alert(error.message);wa.value=""}
+init();
+</script></body></html>
