@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#08080b">
+<title>ItzSmokePoint · Admin</title>
+<link rel="preconnect" href="https://uzkusblmtvzjvulbgdav.supabase.co">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&display=swap">
+<style>
+:root{
+  --bg:#08080b;--card:#111118;--card2:#17151e;--text:#f6f3fa;--muted:#aaa4b5;
+  --purple:#9b5dff;--purple2:#7134c7;--border:#2b2637;--ok:#9de0b0;--danger:#ff9292
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif}
+body{
+  position:relative;
+  background:
+    radial-gradient(ellipse 55% 30% at 50% -8%,rgba(137,79,226,.16),transparent 68%),
+    radial-gradient(ellipse 35% 26% at 85% 80%,rgba(174,138,245,.05),transparent 72%),
+    #08080b;
+  background-attachment:fixed;
+}
+*{-webkit-tap-highlight-color:transparent}
+button{font:inherit;-webkit-tap-highlight-color:transparent;outline:none;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--purple);outline-offset:2px}
+input,textarea{-webkit-tap-highlight-color:transparent;font:inherit}
+input:focus,textarea:focus{outline:none;border-color:var(--purple);box-shadow:0 0 0 3px rgba(155,93,255,.15)}
+.wrap{max-width:1250px;margin:auto;padding:0 16px}
+
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{0%{opacity:0;transform:scale(.92)}100%{opacity:1;transform:scale(1)}}
+@keyframes brandIn{from{opacity:0;transform:translateY(-14px) rotate(-6deg)}to{opacity:1;transform:translateY(0) rotate(0)}}
+@keyframes flameFlicker{0%,100%{transform:scale(1) rotate(0deg);opacity:.85}50%{transform:scale(1.1) rotate(3deg);opacity:1}}
+@keyframes glowPulse{0%,100%{opacity:.22}50%{opacity:.45}}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important;transition-delay:0s!important}
+}
+
+header{
+  position:sticky;top:0;z-index:30;
+  background:rgba(10,9,14,.62);
+  backdrop-filter:blur(16px) saturate(150%);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);
+  border-bottom:1px solid transparent;
+  transition:border-color .25s ease, box-shadow .25s ease, background .25s ease;
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  header{background:rgba(8,8,11,.97)}
+}
+header.scrolled{border-bottom-color:var(--border);box-shadow:0 10px 24px rgba(0,0,0,.28);background:rgba(10,9,14,.82)}
+.nav{min-height:72px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.brandHero{display:flex;justify-content:center;align-items:center;text-align:center}
+.brandWrap{display:inline-flex;flex-direction:column;align-items:center}
+.brandFlame{width:18px;height:18px;fill:var(--purple);margin-bottom:1px;transform-origin:50% 90%;animation:flameFlicker 1.7s ease-in-out infinite}
+.brandText{display:inline-flex;align-items:baseline;white-space:nowrap;line-height:1;transform:skewX(-8deg)}
+.brandText span,.brandText b,.brandText strong{
+  font-family:'Anton',Impact,'Arial Narrow',sans-serif;
+  font-size:clamp(22px,6vw,34px);font-weight:400;letter-spacing:.5px;display:inline-block;
+}
+.brandText span{color:#fff;animation:brandIn .5s cubic-bezier(.22,.9,.32,1) both}
+.brandText b{color:var(--purple);position:relative;margin:0 2px;animation:brandIn .5s cubic-bezier(.22,.9,.32,1) .08s both}
+.brandText b::after{content:"";position:absolute;left:2%;right:2%;bottom:6%;height:55%;background:var(--purple);filter:blur(14px);opacity:.3;z-index:-1;animation:glowPulse 3.4s ease-in-out infinite}
+.brandText strong{color:#fff;animation:brandIn .5s cubic-bezier(.22,.9,.32,1) .16s both}
+.adminTag{margin-top:3px;font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+
+main{padding:22px 0 70px}
+main.wrap{max-width:1250px}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin:6px 0 20px}
+.searchInput{flex:1 1 220px;max-width:320px;background:#0b0b10;border:1px solid var(--border);color:#fff;border-radius:10px;padding:11px 14px}
+.primary{background:var(--purple);color:#fff;border:0;border-radius:10px;padding:11px 16px;font-weight:800;transition:background .15s ease,transform .12s ease,box-shadow .15s ease}
+.primary:hover{background:#a76dff;box-shadow:0 8px 20px rgba(155,93,255,.3)}
+.primary:active{transform:scale(.97)}
+.secondary{background:var(--card2);color:#fff;border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-weight:700;transition:border-color .15s ease,transform .12s ease}
+.secondary:hover{border-color:rgba(178,132,255,.5)}
+.secondary:active{transform:scale(.97)}
+
+.panel{
+  background:linear-gradient(145deg,rgba(46,40,62,.5),rgba(16,15,22,.55));
+  backdrop-filter:blur(12px) saturate(150%);
+  -webkit-backdrop-filter:blur(12px) saturate(150%);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:16px;padding:20px;margin-bottom:20px;
+  animation:cardIn .35s ease both;
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .panel{background:linear-gradient(145deg,rgba(35,30,47,.94),rgba(12,12,18,.97))}
+}
+.panel h3{margin:0 0 16px;text-align:center;font-size:17px}
+.settingsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.settingField label{display:grid;gap:6px;color:var(--muted);font-size:13px;margin-bottom:8px}
+.settingField input{width:100%;background:#0b0b10;color:#fff;border:1px solid var(--border);border-radius:8px;padding:10px}
+.fieldActions{display:flex;gap:8px}
+.hint{color:var(--muted);font-size:12px}
+.panel>.hint{text-align:center;margin-top:12px;margin-bottom:0}
+
+.summary{text-align:center;color:var(--muted);font-size:13px;margin-bottom:16px}
+
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.pcard{
+  content-visibility:auto;
+  contain-intrinsic-size:320px 520px;
+  background:linear-gradient(145deg,rgba(46,40,62,.5),rgba(16,15,22,.55));
+  backdrop-filter:blur(10px) saturate(150%);
+  -webkit-backdrop-filter:blur(10px) saturate(150%);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;
+  transition:box-shadow .3s ease, opacity .18s ease, transform .18s ease;
+  animation:cardIn .35s ease both;
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .pcard{background:linear-gradient(145deg,rgba(35,30,47,.94),rgba(12,12,18,.97))}
+}
+.pcard.inactive{opacity:.55}
+.pcard.justSaved{box-shadow:0 0 0 2px var(--purple),0 0 24px rgba(155,93,255,.35)}
+.pcard.removing{opacity:0;transform:scale(.95)}
+.pcard.hide{display:none}
+
+.imgWrap{position:relative;height:190px;border-radius:13px;background:linear-gradient(145deg,rgba(8,8,13,.9),rgba(22,18,31,.75));border:1px dashed rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color .2s ease,background .2s ease}
+.imgWrap.drag{border-color:var(--purple);background:rgba(155,93,255,.1)}
+.imgWrap img{width:100%;height:100%;object-fit:contain}
+.imgWrap .ph{color:#6d6579;font-size:13px}
+.imgEdit{position:absolute;right:8px;bottom:8px;width:34px;height:34px;border-radius:50%;background:rgba(10,9,14,.75);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(255,255,255,.15);transition:background .15s ease,transform .15s ease;color:#fff}
+.imgEdit:hover{background:var(--purple)}
+.imgEdit:active{transform:scale(.9)}
+.imgRemove{position:absolute;left:8px;top:8px;width:26px;height:26px;border-radius:50%;background:rgba(25,10,10,.72);color:#ffb3b3;border:1px solid rgba(255,140,140,.32);cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center}
+.imgRemove:active{transform:scale(.9)}
+
+.pcardTop{display:flex;align-items:center;gap:8px}
+.f-name{flex:1;min-width:0;background:#0b0b10;border:1px solid var(--border);color:#fff;border-radius:8px;padding:9px 10px;font-weight:700}
+
+.badge-ok,.badge-bad{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:99px;font-size:11px;font-weight:800;letter-spacing:.2px;flex:none;white-space:nowrap}
+.badge-ok::before,.badge-bad::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge-ok{background:rgba(120,220,160,.14);color:#8be8ab;border:1px solid rgba(120,220,160,.35)}
+.badge-bad{background:rgba(255,110,110,.13);color:#ff9c9c;border:1px solid rgba(255,110,110,.35)}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid3 label{display:grid;gap:4px;font-size:11px;color:var(--muted)}
+.f-num{width:100%;background:#0b0b10;border:1px solid var(--border);color:#fff;border-radius:8px;padding:8px}
+.fLabel{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.f-desc,.f-feat{background:#0b0b10;border:1px solid var(--border);color:#fff;border-radius:8px;padding:9px;resize:vertical;font-family:inherit}
+.f-desc{min-height:64px}
+.f-feat{min-height:78px}
+
+.pcardFoot{display:flex;align-items:center;justify-content:space-between;margin-top:2px}
+.toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--muted)}
+.toggle input{position:absolute;opacity:0;width:1px;height:1px}
+.toggleTrack{width:38px;height:22px;background:#2a2635;border-radius:99px;position:relative;transition:background .2s ease;flex:none}
+.toggleThumb{position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .2s cubic-bezier(.22,.9,.32,1)}
+.toggle input:checked+.toggleTrack{background:var(--purple)}
+.toggle input:checked+.toggleTrack .toggleThumb{transform:translateX(16px)}
+.toggle input:focus-visible+.toggleTrack{outline:2px solid var(--purple);outline-offset:2px}
+.delete{background:#2a1117;color:#ffb3b3;border:1px solid #57202b;border-radius:9px;padding:9px 12px;font-weight:700;transition:background .15s ease,transform .12s ease}
+.delete:hover{background:#3a1620}
+.delete:active{transform:scale(.95)}
+
+.authPanel{max-width:420px;margin:50px auto;text-align:center}
+.authForm{display:grid;gap:10px;margin-top:14px}
+.authForm input{background:#0b0b10;color:#fff;border:1px solid var(--border);border-radius:8px;padding:11px}
+
+.emptyState{grid-column:1/-1;text-align:center;padding:40px 10px;color:var(--muted)}
+
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(10px);background:rgba(20,16,30,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.12);color:#fff;padding:11px 18px;border-radius:99px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;z-index:200;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:640px){
+  .wrap{padding:0 12px}
+  .pgrid{grid-template-columns:1fr}
+  .panel{padding:16px}
+}
+</style>
+</head>
+<body>
+<header>
+<div class="wrap nav">
+  <span aria-hidden="true"></span>
+  <div class="brandHero">
+    <div class="brandWrap">
+      <svg class="brandFlame" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2c1.2 2.6-1.6 4.1-1.9 6.7-.2 1.7.9 2.6 2 2.6.9 0 1.9-.7 1.7-2-.1-.6.2-.7.6-.2.9 1.1 1.1 2.6.2 3.8-1.3 1.7-3.9 1.8-5.4.2-1.9-2-1.7-4.8-.2-7C10 4.6 11.3 3.3 12 2z"/>
+      </svg>
+      <div class="brandText"><span>itz</span><b>Smoke</b><strong>Point</strong></div>
+      <span class="adminTag">Admin</span>
+    </div>
+  </div>
+  <span aria-hidden="true"></span>
+</div>
+</header>
+<main class="wrap" id="main"></main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://uzkusblmtvzjvulbgdav.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_91jwR0u0DBVBLT0PxpmVFQ_yhpnxbLO";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+</script>
+<script>
+const TABLE_PRODUCTS="store_products", TABLE_SETTINGS="store_settings";
+let ps=[], currentSession=null;
+const mainEl=document.getElementById("main");
+
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function pFind(id){return ps.find(p=>p.id===id)}
+function cardEl(id){return document.querySelector(`.pcard[data-id="${id}"]`)}
+
+async function init(){
+  const {data}=await supabaseClient.auth.getSession();
+  currentSession=data.session;
+  if(!currentSession){showLogin();return}
+  await mountApp();
+}
+function showLogin(){
+  mainEl.innerHTML=`<section class="panel authPanel">
+  <h2>Acceso administrador</h2>
+  <p class="hint">Ingresá el correo y contraseña del administrador.</p>
+  <div class="authForm">
+    <input id="loginEmail" type="email" placeholder="Correo">
+    <input id="loginPassword" type="password" placeholder="Contraseña">
+    <button class="primary" onclick="login()">Entrar</button>
+    <div id="loginMsg" class="hint"></div>
+  </div>
+  </section>`;
+}
+async function login(){
+  const email=loginEmail.value.trim(),password=loginPassword.value;
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){loginMsg.textContent=error.message;return}
+  currentSession=data.session;location.reload();
+}
+async function logout(){await supabaseClient.auth.signOut();location.reload()}
+
+function renderShell(){
+  mainEl.innerHTML=`
+  <div class="toolbar">
+    <button class="primary" onclick="addProduct()">＋ Agregar producto</button>
+    <input id="search" class="searchInput" placeholder="Buscar producto..." oninput="filterCards()">
+    <button class="secondary" onclick="window.open('index.html','_blank')">Abrir catálogo</button>
+    <button class="secondary" onclick="refreshAll()">Actualizar</button>
+    <button class="secondary" onclick="logout()">Cerrar sesión</button>
+  </div>
+  <section class="panel">
+    <h3>Configuración</h3>
+    <div class="settingsGrid">
+      <div class="settingField">
+        <label>WhatsApp<input id="wa" placeholder="549..." inputmode="numeric"></label>
+        <div class="fieldActions"><button class="primary" onclick="saveWA()">Guardar</button><button class="secondary" onclick="removeWA()">Quitar</button></div>
+      </div>
+      <div class="settingField">
+        <label>Instagram<input id="ig" placeholder="https://instagram.com/tuusuario"></label>
+        <div class="fieldActions"><button class="primary" onclick="saveIG()">Guardar</button><button class="secondary" onclick="removeIG()">Quitar</button></div>
+      </div>
+    </div>
+    <p class="hint">El WhatsApp arma el mensaje del carrito. El Instagram aparece como ícono en la tienda.</p>
+  </section>
+  <div class="summary" id="summary"></div>
+  <div class="pgrid" id="pgrid"></div>`;
+}
+
+async function mountApp(){
+  renderShell();
+  ps=await getProducts();
+  renderProducts();
+  await loadSettings();
+}
+async function refreshAll(){
+  ps=await getProducts();
+  renderProducts();
+  await loadSettings();
+  flashToast("Actualizado.");
+}
+async function getProducts(){
+  const {data,error}=await supabaseClient.from(TABLE_PRODUCTS).select("*").order("created_at",{ascending:true});
+  if(error){alert(error.message);return []} return data||[];
+}
+async function loadSettings(){
+  const {data,error}=await supabaseClient.from(TABLE_SETTINGS).select("*").eq("id",true).maybeSingle();
+  if(error){console.error(error);return}
+  if(wa)wa.value=data?.whatsapp||"";
+  if(ig)ig.value=data?.instagram||"";
+}
+
+function renderSummary(){
+  const el=document.getElementById("summary");
+  if(!el)return;
+  const total=ps.length,activos=ps.filter(p=>p.active!==false).length,agotados=ps.filter(p=>Number(p.stock)<=0).length;
+  el.textContent=total?`${total} producto${total===1?"":"s"} · ${activos} visible${activos===1?"":"s"} · ${agotados} agotado${agotados===1?"":"s"}`:"Todavía no cargaste productos.";
+}
+
+function imgWrapInner(p){
+  return `${p.image?`<img src="${p.image}" alt="">`:`<span class="ph">Sin imagen</span>`}
+  <label class="imgEdit" title="Cambiar imagen">
+    <input type="file" accept="image/*" hidden onchange="handleFileInput('${p.id}',this)">✎
+  </label>
+  ${p.image?`<button type="button" class="imgRemove" onclick="removeImage('${p.id}')" title="Quitar imagen">✕</button>`:""}`;
+}
+
+function productCard(p){
+  const ok=Number(p.stock)>0;
+  return `<article class="pcard ${p.active===false?"inactive":""}" data-id="${p.id}" data-name="${esc(p.name).toLowerCase()}">
+    <div class="imgWrap" id="drop-${p.id}">${imgWrapInner(p)}</div>
+    <div class="pcardTop">
+      <input class="f-name" value="${esc(p.name)}" placeholder="Nombre del producto" onchange="updateField('${p.id}','name',this.value)">
+      <span class="statusBadge ${ok?"badge-ok":"badge-bad"}">${ok?"Disponible":"Agotado"}</span>
+    </div>
+    <div class="grid3">
+      <label>Precio<input class="f-num" type="number" min="0" value="${Number(p.price)||0}" onchange="updateField('${p.id}','price',Math.max(0,+this.value))"></label>
+      <label>Stock<input class="f-num f-stock" type="number" min="0" value="${Number(p.stock)||0}" onchange="updateStock('${p.id}',this.value)"></label>
+      <label>Límite<input class="f-num" type="number" min="0" value="${Number(p.stock_limit)||0}" onchange="updateField('${p.id}','stock_limit',Math.max(0,+this.value))"></label>
+    </div>
+    <label class="fLabel">Descripción<textarea class="f-desc" onchange="updateField('${p.id}','description',this.value)">${esc(p.description||"")}</textarea></label>
+    <label class="fLabel">Características <span class="hint">(una por línea)</span><textarea class="f-feat" onchange="updateFeatures('${p.id}',this.value)">${esc((p.features||[]).join("\n"))}</textarea></label>
+    <div class="pcardFoot">
+      <label class="toggle">
+        <input type="checkbox" ${p.active!==false?"checked":""} onchange="updateField('${p.id}','active',this.checked)">
+        <span class="toggleTrack"><span class="toggleThumb"></span></span>
+        <span>Visible</span>
+      </label>
+      <button type="button" class="delete" onclick="del('${p.id}')">Eliminar</button>
+    </div>
+  </article>`;
+}
+
+function renderProducts(){
+  const pgrid=document.getElementById("pgrid");
+  if(!pgrid)return;
+  pgrid.innerHTML=ps.length?ps.map(p=>productCard(p)).join(""):`<div class="emptyState">Todavía no hay productos. Usá "＋ Agregar producto" para crear el primero.</div>`;
+  ps.forEach(p=>bindDropzone(document.getElementById("drop-"+p.id),p.id));
+  renderSummary();
+  filterCards();
+}
+
+function bindDropzone(el,id){
+  if(!el)return;
+  ["dragenter","dragover"].forEach(evt=>el.addEventListener(evt,e=>{e.preventDefault();el.classList.add("drag")}));
+  ["dragleave","drop"].forEach(evt=>el.addEventListener(evt,e=>{e.preventDefault();el.classList.remove("drag")}));
+  el.addEventListener("drop",e=>{const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)handleImageFile(id,f)});
+}
+
+function filterCards(){
+  const search=document.getElementById("search");
+  const q=(search?.value||"").trim().toLowerCase();
+  let visible=0;
+  document.querySelectorAll(".pcard").forEach(el=>{
+    const match=!q||(el.dataset.name||"").includes(q);
+    el.classList.toggle("hide",!match);
+    if(match)visible++;
+  });
+  let empty=document.getElementById("emptySearch");
+  const pgrid=document.getElementById("pgrid");
+  if(q && visible===0 && ps.length){
+    if(!empty){empty=document.createElement("div");empty.id="emptySearch";empty.className="emptyState";empty.textContent="No se encontraron productos.";pgrid.appendChild(empty)}
+  }else if(empty){empty.remove()}
+}
+
+function flashSaved(id){
+  const el=cardEl(id);if(!el)return;
+  el.classList.remove("justSaved");
+  void el.offsetWidth;
+  el.classList.add("justSaved");
+  clearTimeout(el._savedTimer);
+  el._savedTimer=setTimeout(()=>el.classList.remove("justSaved"),900);
+}
+function flashToast(msg){
+  let t=document.getElementById("toast");
+  if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t)}
+  t.textContent=msg;
+  t.classList.remove("show");void t.offsetWidth;t.classList.add("show");
+  clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+async function updateField(id,key,value){
+  const p=pFind(id);if(!p)return;
+  const prev=p[key];
+  p[key]=value;
+  const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({[key]:value}).eq("id",id);
+  if(error){p[key]=prev;alert(error.message);return}
+  if(key==="active"){const el=cardEl(id);el&&el.classList.toggle("inactive",value===false);renderSummary()}
+  if(key==="name"){const el=cardEl(id);if(el)el.dataset.name=String(value).toLowerCase()}
+  flashSaved(id);
+}
+async function updateStock(id,raw){
+  const p=pFind(id);if(!p)return;
+  let n=Math.max(0,Math.floor(Number(raw))||0);
+  if(p.stock_limit>0)n=Math.min(n,p.stock_limit);
+  const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({stock:n}).eq("id",id);
+  if(error){alert(error.message);return}
+  p.stock=n;
+  const el=cardEl(id);
+  if(el){
+    const input=el.querySelector(".f-stock");if(input)input.value=n;
+    const badge=el.querySelector(".statusBadge");
+    if(badge){const ok=n>0;badge.textContent=ok?"Disponible":"Agotado";badge.classList.toggle("badge-ok",ok);badge.classList.toggle("badge-bad",!ok)}
+  }
+  renderSummary();
+  flashSaved(id);
+}
+async function updateFeatures(id,text){
+  const arr=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  await updateField(id,"features",arr);
+}
+function handleFileInput(id,inputEl){
+  const f=inputEl.files[0];
+  if(f)handleImageFile(id,f);
+  inputEl.value="";
+}
+function handleImageFile(id,file){
+  if(!file.type.startsWith("image/"))return alert("Elegí una imagen válida.");
+  if(file.size>5*1024*1024)return alert("Máximo 5 MB.");
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    const dataUrl=reader.result;
+    const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({image:dataUrl}).eq("id",id);
+    if(error){alert(error.message);return}
+    const p=pFind(id);if(p)p.image=dataUrl;
+    const wrap=document.getElementById("drop-"+id);
+    if(wrap){wrap.innerHTML=imgWrapInner(p);bindDropzone(wrap,id)}
+    flashSaved(id);
+  };
+  reader.readAsDataURL(file);
+}
+async function removeImage(id){
+  const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({image:""}).eq("id",id);
+  if(error){alert(error.message);return}
+  const p=pFind(id);if(p)p.image="";
+  const wrap=document.getElementById("drop-"+id);
+  if(wrap){wrap.innerHTML=imgWrapInner(p);bindDropzone(wrap,id)}
+  flashSaved(id);
+}
+
+async function addProduct(){
+  const {data,error}=await supabaseClient.from(TABLE_PRODUCTS).insert({name:"Producto nuevo",price:0,stock:0,stock_limit:0,image:"",active:true,description:"",features:[]}).select().single();
+  if(error){alert(error.message);return}
+  ps.push(data);
+  renderProducts();
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`.pcard[data-id="${data.id}"] .f-name`);
+    if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.focus();el.select()}
+  });
+}
+async function del(id){
+  if(!confirm("¿Eliminar este producto?"))return;
+  const el=cardEl(id);
+  if(el)el.classList.add("removing");
+  const {error}=await supabaseClient.from(TABLE_PRODUCTS).delete().eq("id",id);
+  if(error){alert(error.message);if(el)el.classList.remove("removing");return}
+  ps=ps.filter(p=>p.id!==id);
+  setTimeout(()=>{
+    el&&el.remove();
+    renderSummary();
+    if(!ps.length){const pgrid=document.getElementById("pgrid");if(pgrid)pgrid.innerHTML=`<div class="emptyState">Todavía no hay productos. Usá "＋ Agregar producto" para crear el primero.</div>`}
+  },180);
+}
+
+async function saveWA(){
+  const n=wa.value.replace(/\D/g,"");if(!n)return alert("Ingresá un número.");
+  const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,whatsapp:n},{onConflict:"id"});
+  if(error)alert(error.message);else flashToast("Número guardado.");
+}
+async function removeWA(){
+  const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,whatsapp:""},{onConflict:"id"});
+  if(error)alert(error.message);wa.value="";
+}
+async function saveIG(){
+  let link=ig.value.trim();
+  if(link && !/^https?:\/\//i.test(link))link="https://"+link;
+  const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,instagram:link},{onConflict:"id"});
+  if(error)alert(error.message);else{ig.value=link;flashToast("Instagram guardado.")}
+}
+async function removeIG(){
+  const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,instagram:""},{onConflict:"id"});
+  if(error)alert(error.message);ig.value="";
+}
+
+window.addEventListener("scroll",()=>{
+  document.querySelector("header")?.classList.toggle("scrolled",window.scrollY>4);
+},{passive:true});
+
+init();
+</script>
+</body>
+</html>
