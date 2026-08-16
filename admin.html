@@ -280,6 +280,7 @@ function renderShell(){
     <p class="hint" style="margin-top:0">Agrupá tus productos por marca (ej. "Ice King"). Podés fijar un precio y aplicarlo a todos los productos de esa línea de una sola vez.</p>
     <div id="brandsList" class="brandsList"></div>
     <div class="brandsFoot"><button class="primary" onclick="addBrand()">＋ Agregar línea</button></div>
+    <datalist id="brandNamesList"></datalist>
   </section>
   <div class="summary" id="summary"></div>
   <div class="pgrid" id="pgrid"></div>`;
@@ -326,279 +327,44 @@ function brandOptions(selectedId){
   opts+=brandsList.map(b=>`<option value="${b.id}" ${selectedId===b.id?"selected":""}>${esc(b.name)}</option>`).join("");
   return opts;
 }
-
-function brandRow(b){
-  const count=ps.filter(p=>p.brand_id===b.id).length;
-  return `<div class="brandRow ${b.active===false?"inactive":""}" data-id="${b.id}">
-    <input class="f-brandname" value="${esc(b.name)}" placeholder="Nombre de la línea" onchange="updateBrandField('${b.id}','name',this.value)">
-    <div class="brandPriceGroup">
-      <input class="f-num f-brandprice" type="number" min="0" value="${Number(b.price)||0}" onchange="updateBrandField('${b.id}','price',Math.max(0,+this.value))">
-      <button type="button" class="secondary small" onclick="applyBrandPrice('${b.id}')">Aplicar a todos</button>
-    </div>
-    <div class="brandMeta">
-      <span class="hint">${count} producto${count===1?"":"s"}</span>
-      <label class="toggle">
-        <input type="checkbox" ${b.active!==false?"checked":""} onchange="updateBrandField('${b.id}','active',this.checked)">
-        <span class="toggleTrack"><span class="toggleThumb"></span></span>
-        <span>Activa</span>
-      </label>
-      <button type="button" class="delete small" onclick="deleteBrand('${b.id}')">Eliminar</button>
-    </div>
-  </div>`;
-}
-
-function renderBrands(){
-  const el=document.getElementById("brandsList");
-  if(!el)return;
-  el.innerHTML=brandsList.length?brandsList.map(b=>brandRow(b)).join(""):`<p class="hint">Todavía no creaste ninguna línea. Los productos sin marca van a seguir apareciendo igual en la tienda.</p>`;
-}
-
-async function addBrand(){
-  const {data,error}=await supabaseClient.from(TABLE_BRANDS).insert({name:"Nueva línea",price:0,active:true,sort_order:brandsList.length}).select().single();
-  if(error){alert(error.message);return}
-  brandsList.push(data);
-  renderBrands();
-  renderProducts();
-  requestAnimationFrame(()=>{
-    const el=document.querySelector(`.brandRow[data-id="${data.id}"] .f-brandname`);
-    if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.focus();el.select()}
-  });
-}
-async function updateBrandField(id,key,value){
-  const b=bFind(id);if(!b)return;
-  const prev=b[key];
-  b[key]=value;
-  const {error}=await supabaseClient.from(TABLE_BRANDS).update({[key]:value}).eq("id",id);
-  if(error){b[key]=prev;alert(error.message);return}
-  if(key==="name")renderProducts();
-  if(key==="active"){const row=brandRowEl(id);row&&row.classList.toggle("inactive",value===false)}
-  const row=brandRowEl(id);
-  if(row){
-    row.classList.remove("justSaved");void row.offsetWidth;row.classList.add("justSaved");
-    clearTimeout(row._savedTimer);row._savedTimer=setTimeout(()=>row.classList.remove("justSaved"),900);
-  }
-}
-async function applyBrandPrice(id){
-  const b=bFind(id);if(!b)return;
-  const count=ps.filter(p=>p.brand_id===id).length;
-  if(!count)return alert("Todavía no hay productos con esta línea asignada.");
-  if(!confirm(`¿Aplicar el precio a los ${count} producto${count===1?"":"s"} de "${b.name}"?`))return;
-  const price=Number(b.price)||0;
-  const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({price}).eq("brand_id",id);
-  if(error){alert(error.message);return}
-  ps.forEach(p=>{
-    if(p.brand_id===id){
-      p.price=price;
-      const el=cardEl(p.id);
-      if(el){const input=el.querySelector(".f-price");if(input)input.value=price}
-    }
-  });
-  flashToast(`Precio aplicado a ${count} producto${count===1?"":"s"}.`);
-}
-async function deleteBrand(id){
-  const b=bFind(id);if(!b)return;
-  const count=ps.filter(p=>p.brand_id===id).length;
-  const msg=count?`Esta línea tiene ${count} producto${count===1?"":"s"} asignados. Van a quedar "sin marca". ¿Eliminar igual?`:"¿Eliminar esta línea?";
-  if(!confirm(msg))return;
-  const {error}=await supabaseClient.from(TABLE_BRANDS).delete().eq("id",id);
-  if(error){alert(error.message);return}
-  brandsList=brandsList.filter(x=>x.id!==id);
-  ps.forEach(p=>{if(p.brand_id===id)p.brand_id=null});
-  renderBrands();
-  renderProducts();
-}
-
-function imgWrapInner(p){
-  return `${p.image?`<img src="${p.image}" alt="">`:`<span class="ph">Sin imagen</span>`}
-  <label class="imgEdit" title="Cambiar imagen">
-    <input type="file" accept="image/*" hidden onchange="handleFileInput('${p.id}',this)">✎
-  </label>
-  ${p.image?`<button type="button" class="imgRemove" onclick="removeImage('${p.id}')" title="Quitar imagen">✕</button>`:""}`;
-}
-
-function productCard(p){
-  const ok=Number(p.stock)>0;
-  return `<article class="pcard ${p.active===false?"inactive":""}" data-id="${p.id}" data-name="${esc(p.name).toLowerCase()}">
-    <div class="imgWrap" id="drop-${p.id}">${imgWrapInner(p)}</div>
-    <div class="pcardTop">
-      <input class="f-name" value="${esc(p.name)}" placeholder="Nombre del producto" onchange="updateField('${p.id}','name',this.value)">
-      <span class="statusBadge ${ok?"badge-ok":"badge-bad"}">${ok?"Disponible":"Agotado"}</span>
-    </div>
-    <label class="fLabel">Marca / línea<select class="f-brand" onchange="updateField('${p.id}','brand_id',this.value||null)">${brandOptions(p.brand_id)}</select></label>
-    <div class="grid3">
-      <label>Precio<input class="f-num f-price" type="number" min="0" value="${Number(p.price)||0}" onchange="updateField('${p.id}','price',Math.max(0,+this.value))"></label>
-      <label>Stock<input class="f-num f-stock" type="number" min="0" value="${Number(p.stock)||0}" onchange="updateStock('${p.id}',this.value)"></label>
-      <label>Límite<input class="f-num" type="number" min="0" value="${Number(p.stock_limit)||0}" onchange="updateField('${p.id}','stock_limit',Math.max(0,+this.value))"></label>
-    </div>
-    <label class="fLabel">Descripción<textarea class="f-desc" onchange="updateField('${p.id}','description',this.value)">${esc(p.description||"")}</textarea></label>
-    <label class="fLabel">Características <span class="hint">(una por línea)</span><textarea class="f-feat" onchange="updateFeatures('${p.id}',this.value)">${esc((p.features||[]).join("\n"))}</textarea></label>
-    <div class="pcardFoot">
-      <label class="toggle">
-        <input type="checkbox" ${p.active!==false?"checked":""} onchange="updateField('${p.id}','active',this.checked)">
-        <span class="toggleTrack"><span class="toggleThumb"></span></span>
-        <span>Visible</span>
-      </label>
-      <button type="button" class="delete" onclick="del('${p.id}')">Eliminar</button>
-    </div>
-  </article>`;
-}
-
-function renderProducts(){
-  const pgrid=document.getElementById("pgrid");
-  if(!pgrid)return;
-  pgrid.innerHTML=ps.length?ps.map(p=>productCard(p)).join(""):`<div class="emptyState">Todavía no hay productos. Usá "＋ Agregar producto" para crear el primero.</div>`;
-  ps.forEach(p=>bindDropzone(document.getElementById("drop-"+p.id),p.id));
-  renderSummary();
-  filterCards();
-}
-
-function bindDropzone(el,id){
-  if(!el)return;
-  ["dragenter","dragover"].forEach(evt=>el.addEventListener(evt,e=>{e.preventDefault();el.classList.add("drag")}));
-  ["dragleave","drop"].forEach(evt=>el.addEventListener(evt,e=>{e.preventDefault();el.classList.remove("drag")}));
-  el.addEventListener("drop",e=>{const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)handleImageFile(id,f)});
-}
-
-function filterCards(){
-  const search=document.getElementById("search");
-  const q=(search?.value||"").trim().toLowerCase();
-  let visible=0;
-  document.querySelectorAll(".pcard").forEach(el=>{
-    const match=!q||(el.dataset.name||"").includes(q);
-    el.classList.toggle("hide",!match);
-    if(match)visible++;
-  });
-  let empty=document.getElementById("emptySearch");
-  const pgrid=document.getElementById("pgrid");
-  if(q && visible===0 && ps.length){
-    if(!empty){empty=document.createElement("div");empty.id="emptySearch";empty.className="emptyState";empty.textContent="No se encontraron productos.";pgrid.appendChild(empty)}
-  }else if(empty){empty.remove()}
-}
-
-function flashSaved(id){
-  const el=cardEl(id);if(!el)return;
-  el.classList.remove("justSaved");
-  void el.offsetWidth;
-  el.classList.add("justSaved");
-  clearTimeout(el._savedTimer);
-  el._savedTimer=setTimeout(()=>el.classList.remove("justSaved"),900);
-}
-function flashToast(msg){
-  let t=document.getElementById("toast");
-  if(!t){t=document.createElement("div");t.id="toast";t.className="toast";document.body.appendChild(t)}
-  t.textContent=msg;
-  t.classList.remove("show");void t.offsetWidth;t.classList.add("show");
-  clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove("show"),2200);
-}
-
-async function updateField(id,key,value){
+async function updateProductBrand(id,typedName){
+  const name=typedName.trim();
   const p=pFind(id);if(!p)return;
-  const prev=p[key];
-  p[key]=value;
-  const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({[key]:value}).eq("id",id);
-  if(error){p[key]=prev;alert(error.message);return}
-  if(key==="active"){const el=cardEl(id);el&&el.classList.toggle("inactive",value===false);renderSummary()}
-  if(key==="name"){const el=cardEl(id);if(el)el.dataset.name=String(value).toLowerCase()}
-  flashSaved(id);
-}
-async function updateStock(id,raw){
-  const p=pFind(id);if(!p)return;
-  let n=Math.max(0,Math.floor(Number(raw))||0);
-  if(p.stock_limit>0)n=Math.min(n,p.stock_limit);
-  const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({stock:n}).eq("id",id);
-  if(error){alert(error.message);return}
-  p.stock=n;
-  const el=cardEl(id);
-  if(el){
-    const input=el.querySelector(".f-stock");if(input)input.value=n;
-    const badge=el.querySelector(".statusBadge");
-    if(badge){const ok=n>0;badge.textContent=ok?"Disponible":"Agotado";badge.classList.toggle("badge-ok",ok);badge.classList.toggle("badge-bad",!ok)}
+  if(!name){
+    if(p.brand_id)await updateField(id,"brand_id",null);
+    return;
   }
-  renderSummary();
-  flashSaved(id);
-}
-async function updateFeatures(id,text){
-  const arr=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  await updateField(id,"features",arr);
-}
-function handleFileInput(id,inputEl){
-  const f=inputEl.files[0];
-  if(f)handleImageFile(id,f);
-  inputEl.value="";
-}
-function handleImageFile(id,file){
-  if(!file.type.startsWith("image/"))return alert("Elegí una imagen válida.");
-  if(file.size>5*1024*1024)return alert("Máximo 5 MB.");
-  const reader=new FileReader();
-  reader.onload=async()=>{
-    const dataUrl=reader.result;
-    const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({image:dataUrl}).eq("id",id);
+  let b=brandsList.find(x=>x.name.trim().toLowerCase()===name.toLowerCase());
+  if(!b){
+    const {data,error}=await supabaseClient.from(TABLE_BRANDS).insert({name,price:Number(p.price)||0,active:true,sort_order:brandsList.length}).select().single();
     if(error){alert(error.message);return}
-    const p=pFind(id);if(p)p.image=dataUrl;
-    const wrap=document.getElementById("drop-"+id);
-    if(wrap){wrap.innerHTML=imgWrapInner(p);bindDropzone(wrap,id)}
-    flashSaved(id);
-  };
-  reader.readAsDataURL(file);
+    b=data;
+    brandsList.push(b);
+    renderBrands();
+  }
+  if(p.brand_id===b.id)return;
+  await updateField(id,"brand_id",b.id);
 }
-async function removeImage(id){
-  const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({image:""}).eq("id",id);
-  if(error){alert(error.message);return}
-  const p=pFind(id);if(p)p.image="";
-  const wrap=document.getElementById("drop-"+id);
-  if(wrap){wrap.innerHTML=imgWrapInner(p);bindDropzone(wrap,id)}
+async function updateProductPrice(id,rawValue){
+  const p=pFind(id);if(!p)return;
+  const price=Math.max(0,Number(rawValue)||0);
+  const prev=p.price;
+  p.price=price;
+  const {error}=await supabaseClient.from(TABLE_PRODUCTS).update({price}).eq("id",id);
+  if(error){p.price=prev;alert(error.message);return}
   flashSaved(id);
-}
-
-async function addProduct(){
-  const {data,error}=await supabaseClient.from(TABLE_PRODUCTS).insert({name:"Producto nuevo",price:0,stock:0,stock_limit:0,image:"",active:true,description:"",features:[]}).select().single();
-  if(error){alert(error.message);return}
-  ps.push(data);
-  renderProducts();
-  requestAnimationFrame(()=>{
-    const el=document.querySelector(`.pcard[data-id="${data.id}"] .f-name`);
-    if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.focus();el.select()}
-  });
-}
-async function del(id){
-  if(!confirm("¿Eliminar este producto?"))return;
-  const el=cardEl(id);
-  if(el)el.classList.add("removing");
-  const {error}=await supabaseClient.from(TABLE_PRODUCTS).delete().eq("id",id);
-  if(error){alert(error.message);if(el)el.classList.remove("removing");return}
-  ps=ps.filter(p=>p.id!==id);
-  setTimeout(()=>{
-    el&&el.remove();
-    renderSummary();
-    if(!ps.length){const pgrid=document.getElementById("pgrid");if(pgrid)pgrid.innerHTML=`<div class="emptyState">Todavía no hay productos. Usá "＋ Agregar producto" para crear el primero.</div>`}
-  },180);
-}
-
-async function saveWA(){
-  const n=wa.value.replace(/\D/g,"");if(!n)return alert("Ingresá un número.");
-  const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,whatsapp:n},{onConflict:"id"});
-  if(error)alert(error.message);else flashToast("Número guardado.");
-}
-async function removeWA(){
-  const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,whatsapp:""},{onConflict:"id"});
-  if(error)alert(error.message);wa.value="";
-}
-async function saveIG(){
-  let link=ig.value.trim();
-  if(link && !/^https?:\/\//i.test(link))link="https://"+link;
-  const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,instagram:link},{onConflict:"id"});
-  if(error)alert(error.message);else{ig.value=link;flashToast("Instagram guardado.")}
-}
-async function removeIG(){
-  const {error}=await supabaseClient.from(TABLE_SETTINGS).upsert({id:true,instagram:""},{onConflict:"id"});
-  if(error)alert(error.message);ig.value="";
-}
-
-window.addEventListener("scroll",()=>{
-  document.querySelector("header")?.classList.toggle("scrolled",window.scrollY>4);
-},{passive:true});
-
-init();
-</script>
-</body>
-</html>
+  if(!p.brand_id)return;
+  const siblings=ps.filter(x=>x.brand_id===p.brand_id && x.id!==id);
+  const b=bFind(p.brand_id);
+  const [r1,r2]=await Promise.all([
+    supabaseClient.from(TABLE_BRANDS).update({price}).eq("id",p.brand_id),
+    siblings.length?supabaseClient.from(TABLE_PRODUCTS).update({price}).eq("brand_id",p.brand_id).neq("id",id):Promise.resolve({error:null})
+  ]);
+  if(r1.error){alert(r1.error.message);return}
+  if(r2.error){alert(r2.error.message);return}
+  if(b){
+    b.price=price;
+    const row=brandRowEl(b.id);
+    if(row){const input=row.querySelector(".f-brandprice");if(input)input.value=price}
+  }
+  if(
